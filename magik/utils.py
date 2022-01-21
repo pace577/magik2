@@ -3,88 +3,85 @@
 """Contains all utility functions needed for magik"""
 
 from pathlib import Path
-from structs import ClassInfo
+from structs import EmptySlot, BreakSlot, ClassSlot
 import configparser
 import csv
+from typing import Dict
+from structs import Time, Slot
 
-
-config_file_name = "config.ini"
 timetable_file_name = "timetable.csv"
 
-def get_config_from_file():
-    """Extracts configuration from the 'config.ini' file. Returns cfg_tuple which contains 3 terms:
-    1. General configuration
-    2. Subject list
-    3. List of ClassInfo objects, each containing subject configuration"""
-    config = configparser.ConfigParser()
-    config_file_name = "config.ini"
-    config.read(config_file_name)
-    class_info_list = []
-    for class_id, subject_name in config['Subjects'].items():
-        class_info = {"subject_name": subject_name}
-        class_info.update(dict(config[subject_name]))
-        class_info_list.append(ClassInfo(class_id, class_info))
+def generate_timetable(timetable_file_path, timetable_fields, timetable_contents, overwrite=False):
+    """Generate a default timetable that can be later modified by the user."""
+    timetable_file = Path(timetable_file_path)
+    # default_times = ["09:00", "10:00", "11:00", "13:00", "14:00"]
+    if timetable_file.is_file() and not overwrite:
+        raise FileExistsError("Timetable already exists. Set overwrite=True to overwrite the existing timetable")
+    else:
+        with open(timetable_file, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=timetable_fields)
+            writer.writeheader()
+            for item in timetable_contents:
+                writer.writerow(item)
+            # writer.writerow({'Day': 'Monday', '09:00': 'm', '10:00': 'cs', '11:00': '', '13:00': 'cs', '14:00': 'm'})
+            # writer.writerow({'Day': 'Tuesday', '09:00': 'm', '10:00': 'm', '11:00': 'cs', '13:00': 'm', '14:00': 'cs'})
+            # writer.writerow({'Day': 'Wednesday', '09:00': 'm', '10:00': '', '11:00': 'cs', '13:00': 'm', '14:00': 'm'})
+            # writer.writerow({'Day': 'Thursday', '09:00': 'm', '10:00': 'm', '11:00': 'cs', '13:00': 'm', '14:00': 'cs'})
+            # writer.writerow({'Day': 'Friday', '09:00': 'm', '10:00': '', '11:00': 'cs', '13:00': 'm', '14:00': 'm'})
 
-    cfg_tuple = (dict(config['General']), dict(config['Subjects']), class_info_list)
-    return cfg_tuple
-
-def generate_default_config(overwrite=False):
-    """Generate a configuration file with defaults"""
+def generate_config_file(config_file_path,
+                            config_sections,
+                            general_config,
+                            category_info,
+                            overwrite=False):
+    """ Generate a configuration file with given parameters
+    There are 2 mandatory sections, and any number of optional sections thereafter.
+    Mandatory sections:
+    1. General: Contains all the general configuration
+    2. Categories: List of all optional categories. For example, if categories
+    are subjects, then we have a list of all subjects in this section
+    3-end. <category_name>: Contains information about the category. For
+    example, if the category is a subject, then it contains all information about
+    that subject.
+    """
     config = configparser.ConfigParser()
-    sections = ["General", "Subjects", "Mathematics", "Computer Science"]
-    subject_ids = get_ids_from_subject_names(sections[2:])
-    subjects_dict = {subject_ids[idx]: sections[2+idx] for idx in range(len(sections[2:])) }
-    subjects_info = {"live_lecture_link":"https://wiki.archlinux.org", "recorded_lecture_link":"https://duckduckgo.com"}
+    sections = config_sections
+    category_ids = get_ids_from_category_names(sections[2:])
+    category_dict = {category_ids[idx]: sections[2+idx] for idx in range(len(sections[2:])) }
 
     # Write the configuration to ConfigParser object
-    config[sections[0]] = {"class_slot_length": 60*60,
-                           "early_to_class_time": 60*10,
-                           "late_to_class_time": 60*20,
-                           "openable_link_attribute":"live_lecture_link"}
-    config[sections[1]] = subjects_dict
+    config[sections[0]] = general_config
+    # config[sections[0]] = {"class_slot_length": 60*60,
+    #                        "early_to_class_time": 60*10,
+    #                        "late_to_class_time": 60*20,
+    #                        "openable_link_attribute":"live_lecture_link"}
+    config[sections[1]] = category_dict
     for section in sections[2:]:
-        config[section] = subjects_info
+        config[section] = category_info
 
-    config_file = Path(config_file_name)
+    config_file = Path(config_file_path)
     if config_file.is_file() and not overwrite:
         raise FileExistsError("Timetable already exists. Set overwrite=True to overwrite the existing timetable")
     else:
         with open(config_file, 'w') as configfile:
             config.write(configfile)
 
-def generate_default_timetable(overwrite=False):
-    """Generate a default timetable that can be later modified by the user."""
-    default_times = ["09:00", "10:00", "11:00", "13:00", "14:00"]
-    timetable_file = Path(timetable_file_name)
-    if timetable_file.is_file() and not overwrite:
-        raise FileExistsError("Timetable already exists. Set overwrite=True to overwrite the existing timetable")
-    else:
-        with open(timetable_file, 'w', newline='') as csvfile:
-            fieldnames = ['Day'] + default_times
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerow({'Day': 'Monday', '09:00': 'm', '10:00': 'cs', '11:00': '', '13:00': 'cs', '14:00': 'm'})
-            writer.writerow({'Day': 'Tuesday', '09:00': 'm', '10:00': 'm', '11:00': 'cs', '13:00': 'm', '14:00': 'cs'})
-            writer.writerow({'Day': 'Wednesday', '09:00': 'm', '10:00': '', '11:00': 'cs', '13:00': 'm', '14:00': 'm'})
-            writer.writerow({'Day': 'Thursday', '09:00': 'm', '10:00': 'm', '11:00': 'cs', '13:00': 'm', '14:00': 'cs'})
-            writer.writerow({'Day': 'Friday', '09:00': 'm', '10:00': '', '11:00': 'cs', '13:00': 'm', '14:00': 'm'})
-
-def get_ids_from_subject_names(subject_names, delimiter=" "):
-    """Generates id from first letter of the words in subject name. Assume words
-    in subject names are space separated by default"""
-    subject_ids = []
-    for subject_name in subject_names:
-        words = subject_name.split(delimiter)
-        subject_id = ''.join([word[0] for word in words]).lower()
-        if subject_id in subject_ids:
-            base_subject_id = subject_id
+def get_ids_from_category_names(category_names, delimiter=" "):
+    """Generates id from first letter of the words in section (subject) name. Assume words
+    in section names are space separated by default"""
+    category_ids = []
+    for category_name in category_names:
+        words = category_name.split(delimiter)
+        category_id = ''.join([word[0] for word in words]).lower()
+        if category_id in category_ids:
+            base_category_id = category_id
             idx = 2
-            subject_id += ("-"+str(idx))
-            while subject_id in subject_ids:
+            category_id += ("-"+str(idx))
+            while category_id in category_ids:
                 idx += 1
-                subject_id = base_subject_id + "-" + str(idx)
-        subject_ids.append(subject_id)
-    return subject_ids
+                category_id = base_category_id + "-" + str(idx)
+        category_ids.append(category_id)
+    return category_ids
 
 def get_timetable_from_csv():
     timetable_file = Path(timetable_file_name)
@@ -92,6 +89,17 @@ def get_timetable_from_csv():
     with open(timetable_file, newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            day = row.pop('Day')
+            day = row.pop('day')
             timetable_dict[day] = row
     print(timetable_dict)
+
+def get_dayschedule_from_dict(dayschedule_dict: Dict[str, str]) -> Dict[Time, Slot]:
+    """Return DaySchedule Object created using given dict as input."""
+    out = {}
+    for time, slot in dayschedule_dict.items():
+        out[get_time_from_timestring(time)] = get_slot_from_slotstring(slot)
+
+def get_time_from_timestring(time_string: str, delimiter: str = ":") -> Time:
+    """Returns Time object from time string. time_string is of the format 'HH:MM'"""
+    hrs, mins = map(int, time_string.split(delimiter))
+    return Time(hrs, mins, 0)

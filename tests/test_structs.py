@@ -4,6 +4,8 @@ import pytest
 from magik.structs import Time, Slot
 
 
+a_rand = Time(12,34,56)
+b_rand = Time(8,19,31)
 a_hr = Time(10,0,30)
 b_hr = Time(9,0,30)
 a_sec = Time(9,0,50)
@@ -26,6 +28,18 @@ class TestTime:
         with pytest.raises(ValueError):
             Time(0,0,100)
 
+    def test_time_add_1(self):
+        assert b_hr + 3600 == a_hr
+
+    def test_time_add_2(self):
+        assert a_hr + (-3600) == b_hr
+
+    def test_time_add_3(self):
+        assert a_zero + 0 == b_zero
+
+    def test_time_add_4(self):
+        assert b_rand + 15325 == a_rand
+
     def test_time_sub_1(self):
         assert (a_sec - b_sec) == 20
 
@@ -34,6 +48,9 @@ class TestTime:
 
     def test_time_sub_3(self):
         assert (a_zero - b_zero) == 0
+
+    def test_time_sub_4(self):
+        assert a_rand - b_rand == 15325
 
     def test_time_lt(self):
         assert (a_eq < b_eq) == False

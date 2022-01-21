@@ -20,6 +20,19 @@ class Time:
         self.minutes = minutes
         self.seconds = seconds
 
+    def __repr__(self) -> str:
+        return f"<Time: {self.hours:02}:{self.minutes:02}:{self.seconds:02}>"
+
+    def __add__(self, time_in_seconds):
+        """Add current Time with given time in seconds, and return new Time."""
+        time_in_seconds = self.to_seconds() + time_in_seconds
+        time_in_seconds %= 86400 #number of seconds in a day
+        hours = time_in_seconds // 3600
+        time_in_seconds %= 3600
+        minutes = time_in_seconds // 60
+        time_in_seconds %= 60
+        return Time(hours, minutes, time_in_seconds)
+
     def __sub__(self, other):
         out_sec = 0
         out_sec += (self.hours - other.hours)*3600 if (self.hours - other.hours) != 0 else 0
@@ -71,6 +84,12 @@ class Time:
     def __ge__(self, other):
         return not self.__lt__(other)
 
+    def __hash__(self) -> int:
+        return self.to_seconds()
+
+    def to_seconds(self):
+        return self.hours*3600 + self.minutes*60 + self.seconds
+
 
 class Slot:
     """Elementary building block of a Time table. Has a starting time and ending
@@ -86,7 +105,10 @@ class Slot:
         self.start_time = start_time
         self.end_time = end_time
 
-    def __get_current_time(self) -> Time:
+    def __repr__(self) -> str:
+        return f"<Slot: {self.slot_type}, {self.start_time}>"
+
+    def get_current_time(self) -> Time:
         """Return current time as magik.structs.Time"""
         current_time_list = map(int, time.strftime("%H,%M,%S").split(','))
         return Time(*current_time_list)
@@ -107,8 +129,7 @@ class Slot:
 class ClassInfo(UserDict):
     """Contains class attributes such as lecture links, clsasroom links, and any
     other data that the user wishes to store"""
-    def __init__(self, class_id: str, __dict, **kwargs) -> None:
-        self.class_id = class_id
+    def __init__(self, __dict, **kwargs) -> None:
         super().__init__(__dict, **kwargs)
 
 
@@ -122,11 +143,14 @@ class ClassSlot(Slot):
         self.slot_type = "class"
         self.class_info = class_info
 
+    def __repr__(self) -> str:
+        return f"<ClassSlot: {self.start_time}>"
+
     def is_early_to_next_class(self, early_to_class_time):
         """Return True if difference between current time and ~start_time~ of
         next slot is less than ~early_to_class_time~."""
         if self.next_slot:
-            time_interval = self.next_slot.start_time - self.__get_current_time()
+            time_interval = self.next_slot.start_time - self.get_current_time()
             if time_interval < early_to_class_time:
                 return True
             return False
@@ -135,7 +159,7 @@ class ClassSlot(Slot):
     def is_late_to_class(self, late_to_class_time):
         """Return True if difference between current time and ~start_time~ of
         current slot is greater than ~late_to_class_time~."""
-        time_interval = self.__get_current_time() - self.start_time
+        time_interval = self.get_current_time() - self.start_time
         return True if time_interval>late_to_class_time else False
 
     def activate(self, early_to_class_time, late_to_class_time, openable_link_attribute):
@@ -165,6 +189,9 @@ class BreakSlot(Slot):
         super().__init__(start_time, end_time)
         self.slot_type = "break"
 
+    def __repr__(self) -> str:
+        return f"<BreakSlot: {self.start_time}>"
+
     def activate(self):
         """Tell the user that this is break time"""
         if not self.is_current_slot():
@@ -179,6 +206,9 @@ class EmptySlot(Slot):
         super().__init__(start_time, end_time)
         self.slot_type = "break"
 
+    def __repr__(self) -> str:
+        return f"<EmptySlot: {self.start_time}>"
+
     def activate(self):
         """Tell the user that this is break time"""
         if not self.is_current_slot():
@@ -192,6 +222,9 @@ class EODSlot(Slot):
     def __init__(self, start_time: Time, end_time: Time):
         super().__init__(start_time, end_time)
         self.slot_type = "EOD"
+
+    def __repr__(self) -> str:
+        return f"<EODSlot: {self.start_time}>"
 
     def activate(self):
         """Tell the user that this is break time"""
@@ -209,6 +242,6 @@ class TimeTable():
     def __init__(self) -> None:
         pass
 
-    def from_dict():
+    def from_dict(self):
         """Get timetable from dict"""
         pass
