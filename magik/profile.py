@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+import time
 import csv
 from pathlib import Path
 import configparser
 from typing import Dict
 
-from structs import Time, Slot, EmptySlot, BreakSlot, ClassSlot, EODSlot, ClassInfo
+from structs import Time, Slot, EmptySlot, BreakSlot, ClassSlot, ZeroSlot, EODSlot, ClassInfo, DaySchedule
 from utils import get_time_from_timestring, generate_config_file, generate_timetable
 from defaults import (
     default_first_section_heading,
@@ -106,36 +107,57 @@ class Profile:
         #print(timetable_dict)
         return timetable_dict
 
-    def get_dayschedule_from_dict(self, dayschedule_dict: Dict[str, str]) -> Dict[Time, Slot]:
-        """Return DaySchedule Object created using given dict as input."""
+    def get_dayschedule_from_dict(self, dayschedule_dict: Dict[str, str]) -> DaySchedule:
+        """Return DaySchedule Object created using given dict as input. In
+        addition to the provided dayschedule, a ZeroSlot is added to the beginning
+        and a EODSlot is added to the end of the dayschedule."""
         out = {}
-        # try:
-        #     start_time = get_time_from_timestring(self.config['dayschedule_start_time'])
-        # except KeyError as e:
-        #     print(e)
-        #     print("Set the 'dayschedule_start_time' variable in your config.ini file, with the HH:MM format.")
         if len(dayschedule_dict)>0:
             last_slot_length = 60*60 #can possibly set this as a configuration variable
-            time_string_lst = list(map(get_time_from_timestring, dayschedule_dict.keys()))
-            time_string_lst.append(time_string_lst[-1] + last_slot_length)
+            time_lst = list(map(get_time_from_timestring, dayschedule_dict.keys()))
 
+            # Setting the last time
+            last_time = time_lst[-1] + last_slot_length
+            last_time = last_time if last_time > time_lst[-1] else Time(23,59,59) #preventing time overflow
+            time_lst.append(last_time)
+
+            if time_lst[0] != Time(0,0,0):
+                out[Time(0,0,0)] = ZeroSlot(Time(0,0,0), time_lst[0])
             for idx, slot in enumerate(dayschedule_dict.values()):
-                # start_time = get_time_from_timestring(time_string_lst[idx])
-                # end_time = get_time_from_timestring(time_string_lst[idx+1])
-                start_time = time_string_lst[idx]
-                end_time = time_string_lst[idx+1]
+                start_time = time_lst[idx]
+                end_time = time_lst[idx+1]
                 out[start_time] = self.get_slot_from_slotstring(slot, start_time, end_time)
                 if idx > 0:
                     previous_slot.next_slot = out[start_time]
                 previous_slot = out[start_time]
-            out[end_time] = EODSlot(end_time, Time(23,59,59))
-            previous_slot.next_slot = out[end_time]
-        return out
+            if end_time != Time(23,59,59):
+                out[end_time] = EODSlot(end_time, Time(23,59,59))
+                previous_slot.next_slot = out[end_time]
+        return DaySchedule(out)
 
     def get_slot_from_slotstring(self, slot_string: str, start_time: Time, end_time: Time) -> Slot:
+        """Returns slot using the slotstring used in timetable file.
+
+        If you wish to use custom objects that inherit from Slot in your
+        timetable, create your own custom profile class by subclassing this
+        Profile class, and overwrite this get_slot_from_substring method to make
+        use of your custom Slot objects.
+        """
         if slot_string == '':
             return EmptySlot(start_time, end_time)
         elif slot_string == 'break':
             return BreakSlot(start_time, end_time)
         else:
             return ClassSlot(self.category_info[slot_string], start_time, end_time)
+
+    def attend_current_slot(self):
+        """Open the link corresponding to the 'openable_link_attribute' of the
+        current slot."""
+        current_day = time.strftime("%A")
+        try:
+            day_schedule = self.timetable[current_day]
+        except KeyError:
+            print(f"No schedule is set for today ({current_day})")
+            return
+        current_slot = day_schedule.get_current_slot()
+        current_slot.activate(self.config)
