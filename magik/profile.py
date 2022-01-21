@@ -7,50 +7,58 @@ from typing import Dict
 
 from structs import Time, Slot, EmptySlot, BreakSlot, ClassSlot, EODSlot, ClassInfo
 from utils import get_time_from_timestring, generate_config_file, generate_timetable
-
-default_config_sections = ["General", "Subjects", "Mathematics", "Computer Science"]
-default_general_config = {"dayschedule_start_time": "09:00",
-                            "class_slot_length": 60*60,
-                            "early_to_class_time": 60*10,
-                            "late_to_class_time": 60*20,
-                            "openable_link_attribute":"live_lecture_link"}
-default_subjects_info = {"live_lecture_link":"https://wiki.archlinux.org", "recorded_lecture_link":"https://duckduckgo.com"}
-
-default_timetable_fields = ["Day", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00"]
-default_timetable_contents = [
-    {'Day': 'Monday', '09:00': 'm', '10:00': 'cs', '11:00': '', '12:00': 'break', '13:00': 'cs', '14:00': 'm'},
-    {'Day': 'Tuesday', '09:00': 'm', '10:00': 'm', '11:00': 'cs', '12:00': 'break', '13:00': 'm', '14:00': 'cs'},
-    {'Day': 'Wednesday', '09:00': 'm', '10:00': '', '11:00': 'cs', '12:00': 'break', '13:00': 'm', '14:00': 'm'},
-    {'Day': 'Thursday', '09:00': 'm', '10:00': 'm', '11:00': 'cs', '12:00': 'break', '13:00': 'm', '14:00': 'cs'},
-    {'Day': 'Friday', '09:00': 'm', '10:00': '', '11:00': 'cs', '12:00': 'break', '13:00': 'm', '14:00': 'm'},
-]
+from defaults import (
+    default_first_section_heading,
+    # default_category_name,
+    # default_category_name_plural,
+    default_category_list,
+    default_config_file_path,
+    default_timetable_file_path,
+    default_general_config,
+    default_subjects_info,
+    default_timetable_contents,
+    default_timetable_fields
+) #can import a configuration dict rather than a huge list of variables!
+# Create a function to get update configuration using a dict. (I think we don't need such a thing... dict.update() might already do that.)
 
 class Profile:
     def __init__(self,
-                 config_file_path: str = "config.ini",
-                 timetable_file_path: str = "timetable.csv",
+                 config_file_path: Path = default_config_file_path,
+                 timetable_file_path: Path = default_timetable_file_path,
                  ) -> None:
-        self.config_file_path = Path(config_file_path)
-        self.timetable_file_path = Path(timetable_file_path)
+        """Constructor for a Profile object. Initialize configuration before
+        calling any methods."""
+        self.config_file_path = config_file_path
+        self.timetable_file_path = timetable_file_path
+        #self.initialize_config_from_files()
+
+    def initialize_config_from_files(self):
+        """Initialize the 'config', 'category_info' and 'timetable' attributes
+        by reading the configuration file and the timetable csv file."""
+        # Read default config first. Overwrite with user config as necessary
+        self.config = default_general_config
         try:
-            self.general_config, self.class_info = self.get_config_from_config_file()
-        except FileNotFoundError:
             self.generate_default_profile_config()
-            self.general_config, self.class_info = self.get_config_from_config_file()
+            _, self.category_info = self.get_config_from_config_file()
+        except FileExistsError:
+            user_config, self.category_info = self.get_config_from_config_file()
+            self.config.update(user_config)
+        # timetable
         try:
-            self.timetable = self.get_timetable_from_timetable_csv()
-        except FileNotFoundError:
             self.generate_default_timetable()
-            self.timetable = self.get_timetable_from_timetable_csv()
+        except FileExistsError:
+            pass
+        self.timetable = self.get_timetable_from_timetable_csv()
 
     def generate_default_profile_config(self, overwrite=False):
         """Generate a default configuration file if it doesn't exist. Set
         overwrite=True to overwrite the existing timetable"""
         generate_config_file(self.config_file_path,
-                                default_config_sections,
-                                default_general_config,
-                                default_subjects_info,
-                                overwrite=overwrite)
+                             default_first_section_heading,
+                             default_general_config,
+                             default_category_list,
+                             default_subjects_info,
+                             overwrite=overwrite)
 
     def generate_default_timetable(self, overwrite=False):
         """Generate a default timetable csv if it doesn't exist. Set
@@ -77,13 +85,15 @@ class Profile:
         else:
             raise FileNotFoundError("Configuration file doesn't exist. Create a configuration file or run Profile.generate_default_config() to create one.")
 
-        class_info_dict = {}
-        for class_id, subject_name in config['Subjects'].items():
-            class_info = {"subject_name": subject_name}
-            class_info.update(dict(config[subject_name]))
-            class_info_dict[class_id] = ClassInfo(class_info)
+        category_info_dict = {}
+        category_section_heading = self.config['category_heading']
+        category = self.config['category_name']
+        for category_id, category_name in config[category_section_heading].items(): # replace 'Subjects' with the category_name_plural configuration variable
+            category_info = {category: category_name}
+            category_info.update(dict(config[category_name]))
+            category_info_dict[category_id] = ClassInfo(category_info)
 
-        return dict(config['General']), class_info_dict
+        return dict(config[default_first_section_heading]), category_info_dict
 
     def get_timetable_from_timetable_csv(self):
         """Extracts timetable from the profile's timetable CSV."""
@@ -93,14 +103,14 @@ class Profile:
             for row in reader:
                 day = row.pop('Day')
                 timetable_dict[day] = self.get_dayschedule_from_dict(row)
-        print(timetable_dict)
+        #print(timetable_dict)
         return timetable_dict
 
     def get_dayschedule_from_dict(self, dayschedule_dict: Dict[str, str]) -> Dict[Time, Slot]:
         """Return DaySchedule Object created using given dict as input."""
         out = {}
         # try:
-        #     start_time = get_time_from_timestring(self.general_config['dayschedule_start_time'])
+        #     start_time = get_time_from_timestring(self.config['dayschedule_start_time'])
         # except KeyError as e:
         #     print(e)
         #     print("Set the 'dayschedule_start_time' variable in your config.ini file, with the HH:MM format.")
@@ -128,4 +138,4 @@ class Profile:
         elif slot_string == 'break':
             return BreakSlot(start_time, end_time)
         else:
-            return ClassSlot(self.class_info[slot_string], start_time, end_time)
+            return ClassSlot(self.category_info[slot_string], start_time, end_time)

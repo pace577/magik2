@@ -30,39 +30,37 @@ def generate_timetable(timetable_file_path, timetable_fields, timetable_contents
             # writer.writerow({'Day': 'Friday', '09:00': 'm', '10:00': '', '11:00': 'cs', '13:00': 'm', '14:00': 'm'})
 
 def generate_config_file(config_file_path,
-                            config_sections,
-                            general_config,
-                            category_info,
-                            overwrite=False):
+                         first_section_heading,
+                         general_config,
+                         category_list,
+                         category_info,
+                         overwrite=False):
     """ Generate a configuration file with given parameters
     There are 2 mandatory sections, and any number of optional sections thereafter.
     Mandatory sections:
-    1. General: Contains all the general configuration
+    1. Configuration: Contains all the general configuration
     2. Categories: List of all optional categories. For example, if categories
     are subjects, then we have a list of all subjects in this section
     3-end. <category_name>: Contains information about the category. For
     example, if the category is a subject, then it contains all information about
     that subject.
     """
-    config = configparser.ConfigParser()
-    sections = config_sections
-    category_ids = get_ids_from_category_names(sections[2:])
-    category_dict = {category_ids[idx]: sections[2+idx] for idx in range(len(sections[2:])) }
-
-    # Write the configuration to ConfigParser object
-    config[sections[0]] = general_config
-    # config[sections[0]] = {"class_slot_length": 60*60,
-    #                        "early_to_class_time": 60*10,
-    #                        "late_to_class_time": 60*20,
-    #                        "openable_link_attribute":"live_lecture_link"}
-    config[sections[1]] = category_dict
-    for section in sections[2:]:
-        config[section] = category_info
 
     config_file = Path(config_file_path)
     if config_file.is_file() and not overwrite:
         raise FileExistsError("Timetable already exists. Set overwrite=True to overwrite the existing timetable")
     else:
+        config = configparser.ConfigParser()
+        category_heading = general_config['category_heading']
+        sections = [first_section_heading, category_heading] + category_list
+        category_ids = get_ids_from_category_names(category_list)
+        category_dict = {category_ids[idx]: category_list[idx] for idx in range(len(category_list)) }
+
+        # Write the configuration to ConfigParser object
+        config[sections[0]] = general_config
+        config[sections[1]] = category_dict
+        for category in sections[2:]:
+            config[category] = category_info
         with open(config_file, 'w') as configfile:
             config.write(configfile)
 
