@@ -10,8 +10,6 @@ from structs import Time, Slot, EmptySlot, BreakSlot, ClassSlot, ZeroSlot, EODSl
 from utils import get_time_from_timestring, generate_config_file, generate_timetable
 from defaults import (
     default_first_section_heading,
-    # default_category_name,
-    # default_category_name_plural,
     default_category_list,
     default_config_file_path,
     default_timetable_file_path,

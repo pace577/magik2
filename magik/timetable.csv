@@ -1,6 +1,7 @@
-Day,09:00,10:00,11:00,12:00,13:00,14:00
-Monday,m,cs,,break,cs,m
-Tuesday,m,m,cs,break,m,cs
-Wednesday,m,,cs,break,m,m
-Thursday,m,m,cs,break,m,cs
-Friday,m,,cs,break,m,m
+Day,09:00,10:00,11:00,12:00,13:00,14:00,23:00
+Monday,m,cs,,break,cs,m,m
+Tuesday,m,m,cs,break,m,cs,m
+Wednesday,m,,cs,break,m,m,m
+Thursday,m,m,cs,break,m,cs,m
+Friday,m,,cs,break,m,m,break
+Saturday,m,,cs,break,m,m,break

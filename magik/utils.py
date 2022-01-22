@@ -3,7 +3,6 @@
 """Contains all utility functions needed for magik"""
 
 from pathlib import Path
-from structs import EmptySlot, BreakSlot, ClassSlot
 import configparser
 import csv
 from typing import Dict
@@ -23,11 +22,6 @@ def generate_timetable(timetable_file_path, timetable_fields, timetable_contents
             writer.writeheader()
             for item in timetable_contents:
                 writer.writerow(item)
-            # writer.writerow({'Day': 'Monday', '09:00': 'm', '10:00': 'cs', '11:00': '', '13:00': 'cs', '14:00': 'm'})
-            # writer.writerow({'Day': 'Tuesday', '09:00': 'm', '10:00': 'm', '11:00': 'cs', '13:00': 'm', '14:00': 'cs'})
-            # writer.writerow({'Day': 'Wednesday', '09:00': 'm', '10:00': '', '11:00': 'cs', '13:00': 'm', '14:00': 'm'})
-            # writer.writerow({'Day': 'Thursday', '09:00': 'm', '10:00': 'm', '11:00': 'cs', '13:00': 'm', '14:00': 'cs'})
-            # writer.writerow({'Day': 'Friday', '09:00': 'm', '10:00': '', '11:00': 'cs', '13:00': 'm', '14:00': 'm'})
 
 def generate_config_file(config_file_path,
                          first_section_heading,
