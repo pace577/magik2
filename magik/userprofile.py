@@ -5,10 +5,11 @@ import csv
 from pathlib import Path
 import configparser
 from typing import Dict
+import webbrowser
 
-from structs import Time, Slot, EmptySlot, BreakSlot, ClassSlot, ZeroSlot, EODSlot, ClassInfo, DaySchedule
-from utils import get_time_from_timestring, generate_config_file, generate_timetable
-from defaults import (
+from magik.structs import Time, Slot, EmptySlot, BreakSlot, ClassSlot, ZeroSlot, EODSlot, ClassInfo, DaySchedule
+from magik.utils import get_time_from_timestring, generate_config_file, generate_timetable
+from magik.defaults import (
     default_first_section_heading,
     default_category_list,
     default_config_file_path,
@@ -21,6 +22,10 @@ from defaults import (
 # Create a function to get update configuration using a dict. (I think we don't need such a thing... dict.update() might already do that.)
 
 class Profile:
+    config = {}
+    category_info = {}
+    timetable = {}
+
     def __init__(self,
                  config_file_path: Path = default_config_file_path,
                  timetable_file_path: Path = default_timetable_file_path,
@@ -159,3 +164,22 @@ class Profile:
             return
         current_slot = day_schedule.get_current_slot()
         current_slot.activate(self.config)
+
+    def attend_slot(self, category, link_type):
+        try:
+            link = self.category_info[category][link_type]
+            if link:
+                webbrowser.open(link)
+        except KeyError as e:
+            print(e, "class or link type is invalid")
+
+    def cmd_watch(self):
+        """The watch command"""
+        # Add code to watch
+        self.attend_current_slot()
+
+    def cmd_open(self, category, link_type):
+        """The open command"""
+        # Add code to enable shortcuts (first few letters)
+        # Add code to display all available options when insufficient number of arguments are given
+        self.attend_slot(category, link_type)

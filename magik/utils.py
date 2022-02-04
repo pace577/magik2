@@ -6,7 +6,8 @@ from pathlib import Path
 import configparser
 import csv
 from typing import Dict
-from structs import Time, Slot
+
+from magik.structs import Time, Slot
 
 timetable_file_name = "timetable.csv"
 

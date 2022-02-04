@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
 import argparse
-from userprofile import Profile
+from magik.userprofile import Profile
+
+def func():
+    print("Hello!")
 
 def main():
     # Initialize profile
@@ -13,17 +16,19 @@ def main():
 
     # watch command
     watch_parser = subparsers.add_parser('watch', help='watch help')
-    watch_parser.set_defaults(func=p.attend_current_slot)
+    watch_parser.set_defaults(func=(lambda args: p.cmd_watch()))
 
     # open command
     open_parser = subparsers.add_parser('open', help='open help')
-    open_parser.add_argument('class')
+    open_parser.add_argument('category')
     open_parser.add_argument('link_type')
-    watch_parser.set_defaults()
+    open_parser.set_defaults(func=(lambda args: p.cmd_open(args.category, args.link_type)))
     # parser.add_argument('echo', help="echos that variable in the console")
     # parser.add_argument('-v', '--verbosity', help="increase output verbosity", action="store_true")
+
+    # Execute the appropriate function
     args = parser.parse_args()
-    print(args)
+    args.func(args)
     # if args.verbosity:
     #     print("Verbosity turned on")
 
